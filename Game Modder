@@ -1,0 +1,256 @@
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+from datetime import datetime, timedelta
+import threading
+import time
+import random
+
+class GameCompanionApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Game Companion App")
+        self.notes = []
+        self.timers = []
+        self.resources = {"Gold": 0, "Gems": 0, "Energy": 0}
+        self.events = []
+        self.custom_tips = []
+
+        self.create_main_interface()
+
+    def create_main_interface(self):
+        tk.Label(self.root, text="Game Companion App", font=("Arial", 16)).pack(pady=10)
+
+        tk.Button(self.root, text="Manage Timers", command=self.open_timers_window, width=20).pack(pady=5)
+        tk.Button(self.root, text="Manage Notes", command=self.open_notes_window, width=20).pack(pady=5)
+        tk.Button(self.root, text="Resource Tracker", command=self.open_resource_tracker, width=20).pack(pady=5)
+        tk.Button(self.root, text="Event Scheduler", command=self.open_event_scheduler, width=20).pack(pady=5)
+        tk.Button(self.root, text="Manage Tips", command=self.open_tips_window, width=20).pack(pady=5)
+        tk.Button(self.root, text="Damage Calculator", command=self.open_damage_calculator, width=20).pack(pady=5)
+        tk.Button(self.root, text="Resource Optimization Calculator", command=self.open_resource_optimization_calculator, width=20).pack(pady=5)
+        tk.Button(self.root, text="Exit", command=self.root.quit, width=20, fg="red").pack(pady=5)
+
+    def open_damage_calculator(self):
+        calculator_window = tk.Toplevel(self.root)
+        calculator_window.title("Damage Calculator")
+
+        tk.Label(calculator_window, text="Enter Attack Power:").pack(pady=5)
+        attack_power_entry = tk.Entry(calculator_window)
+        attack_power_entry.pack(pady=5)
+
+        tk.Label(calculator_window, text="Enter Defense Value:").pack(pady=5)
+        defense_value_entry = tk.Entry(calculator_window)
+        defense_value_entry.pack(pady=5)
+
+        tk.Label(calculator_window, text="Enter Damage Modifier (if any):").pack(pady=5)
+        modifier_entry = tk.Entry(calculator_window)
+        modifier_entry.pack(pady=5)
+
+        tk.Label(calculator_window, text="Enter Crit Chance (%) (0-100):").pack(pady=5)
+        crit_chance_entry = tk.Entry(calculator_window)
+        crit_chance_entry.pack(pady=5)
+
+        tk.Label(calculator_window, text="Enter Buff/Debuff Multiplier (e.g., 1.2 for buff):").pack(pady=5)
+        buff_debuff_entry = tk.Entry(calculator_window)
+        buff_debuff_entry.pack(pady=5)
+
+        tk.Label(calculator_window, text="Enter Elemental Bonus (if any, e.g., 1.5 for fire advantage):").pack(pady=5)
+        elemental_bonus_entry = tk.Entry(calculator_window)
+        elemental_bonus_entry.pack(pady=5)
+
+        def calculate_damage():
+            try:
+                attack_power = float(attack_power_entry.get())
+                defense_value = float(defense_value_entry.get())
+                modifier = float(modifier_entry.get()) if modifier_entry.get() else 1
+                crit_chance = float(crit_chance_entry.get()) if crit_chance_entry.get() else 0
+                buff_debuff = float(buff_debuff_entry.get()) if buff_debuff_entry.get() else 1
+                elemental_bonus = float(elemental_bonus_entry.get()) if elemental_bonus_entry.get() else 1
+
+                # Apply Crit Chance
+                is_critical = random.random() < (crit_chance / 100)
+                crit_multiplier = 2 if is_critical else 1
+
+                # Apply Buffs/Debuffs and Elemental Bonus
+                damage = (attack_power - defense_value) * modifier * crit_multiplier * buff_debuff * elemental_bonus
+
+                if damage < 0:
+                    damage = 0
+
+                crit_message = "Critical Hit!" if is_critical else "Normal Hit"
+                messagebox.showinfo("Calculated Damage", f"{crit_message}\nCalculated Damage: {damage:.2f}")
+            except ValueError:
+                messagebox.showerror("Error", "Please enter valid numbers.")
+
+        tk.Button(calculator_window, text="Calculate Damage", command=calculate_damage).pack(pady=5)
+
+    def open_resource_optimization_calculator(self):
+        optimization_window = tk.Toplevel(self.root)
+        optimization_window.title("Resource Optimization Calculator")
+
+        tk.Label(optimization_window, text="Enter Total Resources Available:").pack(pady=5)
+        total_resources_entry = tk.Entry(optimization_window)
+        total_resources_entry.pack(pady=5)
+
+        tk.Label(optimization_window, text="Enter Resource Cost Per Action:").pack(pady=5)
+        cost_per_action_entry = tk.Entry(optimization_window)
+        cost_per_action_entry.pack(pady=5)
+
+        tk.Label(optimization_window, text="Enter Desired Actions (e.g., how many upgrades):").pack(pady=5)
+        desired_actions_entry = tk.Entry(optimization_window)
+        desired_actions_entry.pack(pady=5)
+
+        def optimize_resources():
+            try:
+                total_resources = float(total_resources_entry.get())
+                cost_per_action = float(cost_per_action_entry.get())
+                desired_actions = int(desired_actions_entry.get())
+                total_cost = cost_per_action * desired_actions
+                if total_cost <= total_resources:
+                    remaining_resources = total_resources - total_cost
+                    messagebox.showinfo("Optimization Result", f"You can perform {desired_actions} actions. Remaining resources: {remaining_resources:.2f}")
+                else:
+                    messagebox.showwarning("Insufficient Resources", "Not enough resources to perform the desired actions.")
+            except ValueError:
+                messagebox.showerror("Error", "Please enter valid numbers.")
+
+        tk.Button(optimization_window, text="Optimize Resources", command=optimize_resources).pack(pady=5)
+
+    def open_timers_window(self):
+        timer_window = tk.Toplevel(self.root)
+        timer_window.title("Timers")
+
+        tk.Label(timer_window, text="Set Timer (minutes):").pack(pady=5)
+        timer_entry = tk.Entry(timer_window)
+        timer_entry.pack(pady=5)
+
+        def add_timer():
+            try:
+                minutes = int(timer_entry.get())
+                end_time = datetime.now() + timedelta(minutes=minutes)
+                self.timers.append(end_time)
+                threading.Thread(target=self.check_timer, args=(end_time,)).start()
+                messagebox.showinfo("Success", "Timer added successfully!")
+                timer_window.destroy()
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid number.")
+
+        tk.Button(timer_window, text="Add Timer", command=add_timer).pack(pady=5)
+        tk.Button(timer_window, text="View Active Timers", command=self.show_timers).pack(pady=5)
+
+    def show_timers(self):
+        if not self.timers:
+            messagebox.showinfo("Timers", "No active timers.")
+            return
+
+        timers_str = "\n".join(
+            [f"Timer ends at {timer.strftime('%H:%M:%S')}" for timer in self.timers if timer > datetime.now()]
+        )
+        if not timers_str:
+            timers_str = "No active timers."
+        messagebox.showinfo("Active Timers", timers_str)
+
+    def check_timer(self, end_time):
+        while datetime.now() < end_time:
+            time.sleep(1)
+        messagebox.showinfo("Timer Alert", "A timer has finished!")
+
+    def open_notes_window(self):
+        notes_window = tk.Toplevel(self.root)
+        notes_window.title("Notes")
+
+        tk.Label(notes_window, text="Add Note:").pack(pady=5)
+        note_entry = tk.Entry(notes_window, width=40)
+        note_entry.pack(pady=5)
+
+        def add_note():
+            note = note_entry.get().strip()
+            if note:
+                self.notes.append(note)
+                messagebox.showinfo("Success", "Note added successfully!")
+                notes_window.destroy()
+            else:
+                messagebox.showerror("Error", "Note cannot be empty.")
+
+        tk.Button(notes_window, text="Add Note", command=add_note).pack(pady=5)
+        tk.Button(notes_window, text="View Notes", command=self.show_notes).pack(pady=5)
+
+    def show_notes(self):
+        if not self.notes:
+            messagebox.showinfo("Notes", "No notes available.")
+            return
+
+        notes_str = "\n".join([f"- {note}" for note in self.notes])
+        messagebox.showinfo("Notes", notes_str)
+
+    def open_resource_tracker(self):
+        resource_window = tk.Toplevel(self.root)
+        resource_window.title("Resource Tracker")
+
+        def update_resource(resource):
+            value = simpledialog.askinteger("Update Resource", f"Enter new value for {resource}:")
+            if value is not None:
+                self.resources[resource] = value
+                messagebox.showinfo("Success", f"{resource} updated to {value}!")
+
+        for resource in self.resources:
+            tk.Button(resource_window, text=f"{resource}: {self.resources[resource]}", 
+                      command=lambda r=resource: update_resource(r)).pack(pady=5)
+
+    def open_event_scheduler(self):
+        event_window = tk.Toplevel(self.root)
+        event_window.title("Event Scheduler")
+
+        tk.Label(event_window, text="Add Event:").pack(pady=5)
+        event_entry = tk.Entry(event_window)
+        event_entry.pack(pady=5)
+
+        def add_event():
+            event = event_entry.get().strip()
+            if event:
+                self.events.append(event)
+                messagebox.showinfo("Success", "Event added successfully!")
+                event_window.destroy()
+            else:
+                messagebox.showerror("Error", "Event cannot be empty.")
+
+        tk.Button(event_window, text="Add Event", command=add_event).pack(pady=5)
+        tk.Button(event_window, text="View Events", command=self.show_events).pack(pady=5)
+
+    def show_events(self):
+        if not self.events:
+            messagebox.showinfo("Events", "No scheduled events.")
+            return
+
+        events_str = "\n".join([f"- {event}" for event in self.events])
+        messagebox.showinfo("Events", events_str)
+
+    def open_tips_window(self):
+        tips_window = tk.Toplevel(self.root)
+        tips_window.title("Custom Tips")
+
+        tk.Label(tips_window, text="Add Tip:").pack(pady=5)
+        tip_entry = tk.Entry(tips_window, width=40)
+        tip_entry.pack(pady=5)
+
+        def add_tip():
+            tip = tip_entry.get().strip()
+            if tip:
+                self.custom_tips.append(tip)
+                messagebox.showinfo("Success", "Tip added successfully!")
+                tips_window.destroy()
+            else:
+                messagebox.showerror("Error", "Tip cannot be empty.")
+
+        tk.Button(tips_window, text="Add Tip", command=add_tip).pack(pady=5)
+        tk.Button(tips_window, text="View Tips", command=self.show_tips).pack(pady=5)
+
+    def show_tips(self):
+        if not self.custom_tips:
+            messagebox.showinfo("Tips", "No custom tips available.")
+            return
+
+        tips_str = "\n".join([f"- {tip}" for tip in self.custom_tips])
+        messagebox.showinfo("Custom Tips", tips_str)
+
+
+if __
